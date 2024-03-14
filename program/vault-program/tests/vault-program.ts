@@ -5,38 +5,32 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { assert } from "chai";
 
 
-describe("vault-program", () => {
+describe("vault-program", async () => {
     // 配置客戶端使用本地集群（或根據環境變量配置的集群）
     const provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
 
-    console.log(provider.wallet.publicKey);
-  
     // 獲取CounterProgram的程序引用，用於後續的方法調用
     const program = anchor.workspace.VaultProgram as Program<VaultProgram>;
 
     // 算userVaultAccount 的 PDA
-      const userVaultAccount = anchor.web3.PublicKey.findProgramAddressSync(
-        [Buffer.from("vault"), provider.wallet.publicKey.toBuffer()],
-        program.programId
-      )[0];
-
-      console.log(userVaultAccount);
-    
+    const userVaultAccount = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault"), provider.wallet.publicKey.toBuffer()],
+      program.programId
+    )[0];
+  
     // 算userVaultAccount 的 PDA
     const totalInteractionsAccount = anchor.web3.PublicKey.findProgramAddressSync(
       [Buffer.from("counter"), provider.wallet.publicKey.toBuffer()],
       program.programId
     )[0];
-
-    console.log(totalInteractionsAccount);
-    console.log(anchor.web3.SystemProgram.programId);
       
-    // 測試用例：創建並初始化我的計數器
+    // 測試用例：存款到金庫
     it("Deposit into Vault", async () => {
-      // 調用initialize方法初始化計數器，設置初始值為1234
+      const amount = new anchor.BN(1000000000);
+      // 調用deposit方法進行存錢，存 1 顆 sol
       const tx = await program.methods
-        .deposit(new anchor.BN(100000012))    // 這個單位是 0.000000001 個 sol
+        .deposit(amount)                      // 這個單位是 0.000000001 個 sol
         .accounts({
           userVaultAccount: userVaultAccount, // 指定計數器賬戶  算PDA  (debug這個帳戶原本是0 sol 打sol進去後就可以正常deposit錢進去了  懷疑是payer設定到他自己了?)
           userInteractionsCounter: totalInteractionsAccount, // 調用者賬戶   算PDA
@@ -47,17 +41,20 @@ describe("vault-program", () => {
       console.log("Initialize transaction signature:", tx);
       console.log(`SolScan transaction link: https://solscan.io/tx/${tx}?cluster=devnet`);
       
-        // Confirm transaction
-    await provider.connection.confirmTransaction(tx);
+      // Confirm transaction
+      await provider.connection.confirmTransaction(tx);
 
-    // Fetch the created account
-    const vaultData = await program.account.userInteractions.fetch(
-      totalInteractionsAccount
-    );
+      // Fetch the created account
+      const vaultData = await program.account.userInteractions.fetch(
+        totalInteractionsAccount
+      );
 
-    console.log("On-chain data is:", vaultData.totalDeposits);
+      console.log("On-chain data is:", vaultData.totalDeposits);    // 鏈上互動次數
 
+      // 獲取userVaultAccount的餘額
+      const balance = await provider.connection.getBalance(userVaultAccount);
+      console.log("User Vault Account Balance:", balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
 
-      assert.ok((new anchor.BN(1234)));
+      assert.ok(1);
     });
 });

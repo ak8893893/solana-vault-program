@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-declare_id!("CUgwUMb216dRv3oMD19kZ4f8tPFC6ubmexnHtmXScj2e");
+declare_id!("J7Ng6Tf7bYbRh85qSeYC52sJUJbtBArvPgpUWXi3KQdT");
 
 #[program]
 pub mod vault_program {

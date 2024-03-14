@@ -36,9 +36,9 @@ describe("vault-program", () => {
     it("Deposit into Vault", async () => {
       // 調用initialize方法初始化計數器，設置初始值為1234
       const tx = await program.methods
-        .deposit(new anchor.BN(1))
+        .deposit(new anchor.BN(100000012))    // 這個單位是 0.000000001 個 sol
         .accounts({
-          userVaultAccount: userVaultAccount, // 指定計數器賬戶  算PDA
+          userVaultAccount: userVaultAccount, // 指定計數器賬戶  算PDA  (debug這個帳戶原本是0 sol 打sol進去後就可以正常deposit錢進去了  懷疑是payer設定到他自己了?)
           userInteractionsCounter: totalInteractionsAccount, // 調用者賬戶   算PDA
           signer: provider.wallet.publicKey,
           systemProgram: anchor.web3.SystemProgram.programId, // 系統程序ID，用於創建賬戶等操作
@@ -47,6 +47,17 @@ describe("vault-program", () => {
       console.log("Initialize transaction signature:", tx);
       console.log(`SolScan transaction link: https://solscan.io/tx/${tx}?cluster=devnet`);
       
+        // Confirm transaction
+    await provider.connection.confirmTransaction(tx);
+
+    // Fetch the created account
+    const vaultData = await program.account.userInteractions.fetch(
+      totalInteractionsAccount
+    );
+
+    console.log("On-chain data is:", vaultData.totalDeposits);
+
+
       assert.ok((new anchor.BN(1234)));
     });
 });

@@ -8,7 +8,7 @@ vault_program = "CUgwUMb216dRv3oMD19kZ4f8tPFC6ubmexnHtmXScj2e"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "https://purple-cool-dust.solana-devnet.quiknode.pro/5cd01a591208226412ccbf7024aa19f503bfe9e9/"
 wallet = "/home/ak/.config/solana/id.json"
 
 [scripts]

@@ -18,13 +18,15 @@ import { LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import Image from "next/image";
 import {
   VaultProgram,
+} from "@/utils/vault_program";
+import{
   getCounterPDA,
   getVaultPDA,
   programID,
-} from "@/utils/vault_program";
+} from "@/lib/utils"
 import { useSolanaProvider } from "@/hooks/solanaProvider";
 import { BN, Program } from "@coral-xyz/anchor";
-import idl from "@/utils/idl.json";
+import idl from "@/utils/vault_program.json";
 import { useToast } from "@/components/ui/use-toast";
 
 export function DepositCard() {

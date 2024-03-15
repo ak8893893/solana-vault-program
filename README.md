@@ -1,3 +1,5 @@
+This repo is refernce by https://github.com/Yusuf-Uluc/solana-vault/tree/main
+
 # Solana Vault Demo
 
 <div style="display: flex; flex-direction: column; align-items: center">
@@ -11,6 +13,33 @@ Demo dApp for the WeAreDevelopers World Congress.
 </div>
 
 <br/>
+
+## How to run the demo?
+
+1. Clone the repo
+2. Run `yarn` to install the dependencies
+3. Run `yarn dev` to start the dev server
+4. Open `localhost:3000` in your browser
+5. Enjoy!
+
+## How to deploy and use your own smart contract?
+
+1. `$ cd program/vault-program/`
+2. `$ anchor keys list`
+3. Replace the key with your own key in  
+
+program/src/lib.rs declare_id!("------Your key here------");  
+Anchor.toml [programs.localnet]  
+vault_program = "------Your key here------"
+
+4. Then run the following commands: `$ anchor test`
+5. Checking all test cases were passed/
+6. Place the new types file and idl file into /src/utils/  
+
+`$ cp -f program/vault-program/target/idl/vault_program.json src/utils/`  
+`$ cp -f program/vault-program/target/types/vault_program.ts src/utils/`
+
+7. Back to "How to run the demo?" step and then you can see you are using your own smart contract that you just deployed.
 
 ## Purpose
 
@@ -206,27 +235,18 @@ Now that we've learnt how to interact with our program, you can create a simple 
 
 The UI was built using Tailwind CSS and shadcn.
 
-## How to run the demo?
-
-1. Clone the repo
-2. Run `yarn` to install the dependencies
-3. Run `yarn dev` to start the dev server
-4. Open `localhost:3000` in your browser
-5. Enjoy!
-
 ## Smart Contract
 
 ```rs
 use anchor_lang::prelude::*;
 use anchor_lang::system_program;
 
-// This is your program's public key and it will update
-// automatically when you build the project.
-declare_id!("7MtYccqQ745U3ohVr6YVibhpvZCMHUer11BR69zYjrZw");
+declare_id!("J7Ng6Tf7bYbRh85qSeYC52sJUJbtBArvPgpUWXi3KQdT");
 
 #[program]
-mod hello_anchor {
+pub mod vault_program {
     use super::*;
+
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         system_program::transfer(
             CpiContext::new(
@@ -269,6 +289,8 @@ mod hello_anchor {
 
 #[derive(Accounts)]
 pub struct Deposit<'info> {
+    /// CHECK: `user_vault_account` is safe because it is created and initialized
+    /// by the signer, ensuring it has the correct ownership and permissions.
     #[account(mut, seeds=[b"vault", signer.key().as_ref()], bump)]
     pub user_vault_account: AccountInfo<'info>,
     #[account(init_if_needed, space = 16 + 8, seeds=[b"counter", signer.key().as_ref()], bump, payer = signer)]
@@ -280,6 +302,8 @@ pub struct Deposit<'info> {
 
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
+    /// CHECK: `user_vault_account` is safe because it is created and initialized
+    /// by the signer, ensuring it has the correct ownership and permissions.
     #[account(mut, seeds=[b"vault", signer.key().as_ref()], bump)]
     pub user_vault_account: AccountInfo<'info>,
     #[account(mut, seeds=[b"counter", signer.key().as_ref()], bump)]
@@ -299,57 +323,100 @@ pub struct UserInteractions {
 ### Tests
 
 ```ts
-describe("Test", () => {
+import * as anchor from "@coral-xyz/anchor";
+import { BN, Program, web3 } from "@coral-xyz/anchor";
+import { VaultProgram } from "../target/types/vault_program";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { assert } from "chai";
+
+
+describe("vault-program", async () => {
+  // 配置客戶端使用本地集群（或根據環境變量配置的集群）
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+
+  // 獲取CounterProgram的程序引用，用於後續的方法調用
+  const program = anchor.workspace.VaultProgram as Program<VaultProgram>;
+
+  // 算userVaultAccount 的 PDA
   const userVaultAccount = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("vault"), pg.wallet.publicKey.toBuffer()],
-    pg.program.programId
+    [Buffer.from("vault"), provider.wallet.publicKey.toBuffer()],
+    program.programId
   )[0];
 
+  // 算userVaultAccount 的 PDA
   const totalInteractionsAccount = anchor.web3.PublicKey.findProgramAddressSync(
-    [Buffer.from("counter"), pg.wallet.publicKey.toBuffer()],
-    pg.program.programId
+    [Buffer.from("counter"), provider.wallet.publicKey.toBuffer()],
+    program.programId
   )[0];
-
+    
+  // 測試用例：存款到金庫
   it("Deposit into Vault", async () => {
-    // Send transaction
-    const amount = new BN(100000000);
-    const depositTx = await pg.program.methods
-      .deposit(amount)
+    const amount = new anchor.BN(1000000000);
+    // 調用deposit方法進行存錢，存 1 顆 sol
+    const tx = await program.methods
+      .deposit(amount)                      // 這個單位是 0.000000001 個 sol
       .accounts({
-        userVaultAccount: userVaultAccount,
-        signer: pg.wallet.publicKey,
-        userInteractionsCounter: totalInteractionsAccount,
-        systemProgram: web3.SystemProgram.programId,
+        userVaultAccount: userVaultAccount, // 指定計數器賬戶  算PDA  (debug這個帳戶原本是0 sol 打sol進去後就可以正常deposit錢進去了  懷疑是payer設定到他自己了?)
+        userInteractionsCounter: totalInteractionsAccount, // 調用者賬戶   算PDA
+        signer: provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId, // 系統程序ID，用於創建賬戶等操作
       })
       .rpc();
-
+    console.log("Initialize transaction signature:", tx);
+    console.log(`SolScan transaction link: https://solscan.io/tx/${tx}?cluster=devnet`);
+    
     // Confirm transaction
-    await pg.connection.confirmTransaction(depositTx);
+    await provider.connection.confirmTransaction(tx);
 
     // Fetch the created account
-    const vaultData = await pg.program.account.userInteractions.fetch(
+    const vaultData = await program.account.userInteractions.fetch(
       totalInteractionsAccount
     );
 
-    console.log("On-chain data is:", vaultData.totalDeposits);
+    console.log("On-chain data is:", vaultData.totalDeposits);    // 鏈上互動次數
+
+    // 獲取userVaultAccount的餘額
+    const balance = await provider.connection.getBalance(userVaultAccount);
+    console.log("User Vault Account Balance:", balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+
+    assert.ok(1);
   });
 
+  // 測試用例 : 從金庫領錢
   it("Withdraw from vault", async () => {
     // Send transaction
-    const amount = new BN(10000000);
-    const depositTx = await pg.program.methods
+    const amount = new anchor.BN(1000000000);
+    const withdrawTx = await program.methods
       .withdraw(amount)
       .accounts({
         userVaultAccount: userVaultAccount,
-        signer: pg.wallet.publicKey,
         userInteractionsCounter: totalInteractionsAccount,
-        systemProgram: web3.SystemProgram.programId,
+        signer: provider.wallet.publicKey,
+        systemProgram: anchor.web3.SystemProgram.programId,
       })
-      .signers([pg.wallet.keypair])
+      //.signers([provider.wallet.keypair]) 這邊沒有用 的原因是因為在@coral-xyz/anchor框架中，當你使用AnchorProvider來建立一個provider時，這個provider已經包含了簽名操作的邏輯，因此在大多數情況下，你不需要手動指定.signers來簽名交易。 AnchorProvider會自動使用它的wallet來簽署所有透過這個provider發送的交易。
       .rpc();
 
     // Confirm transaction
-    await pg.connection.confirmTransaction(depositTx);
-  });
+    await provider.connection.confirmTransaction(withdrawTx);
+  
+    // Fetch the created account
+    const vaultData = await program.account.userInteractions.fetch(
+      totalInteractionsAccount
+    );
+
+    console.log("On-chain data is:", vaultData.totalDeposits);    // 鏈上互動次數
+
+    // 獲取userVaultAccount的餘額
+    const balance = await provider.connection.getBalance(userVaultAccount);
+    console.log("User Vault Account Balance:", balance / anchor.web3.LAMPORTS_PER_SOL, "SOL");
+    
+    console.log("Initialize transaction signature:", withdrawTx);
+    console.log(`SolScan transaction link: https://solscan.io/tx/${withdrawTx}?cluster=devnet`);
+
+    assert.ok(1);
+    });
 });
+
 ```

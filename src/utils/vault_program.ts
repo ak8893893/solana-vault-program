@@ -1,26 +1,3 @@
-import { PublicKey } from "@solana/web3.js";
-
-export const programID = new PublicKey(
-  "J7Ng6Tf7bYbRh85qSeYC52sJUJbtBArvPgpUWXi3KQdT"
-);
-
-export const getVaultPDA = (publicKey: PublicKey) => {
-  const [vaultPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from("vault"), publicKey.toBuffer()],
-    programID
-  );
-  return vaultPDA;
-};
-
-export const getCounterPDA = (publicKey: PublicKey) => {
-  const [counterPDA] = PublicKey.findProgramAddressSync(
-    [Buffer.from("counter"), publicKey.toBuffer()],
-    programID
-  );
-
-  return counterPDA;
-};
-
 export type VaultProgram = {
   "version": "0.1.0",
   "name": "vault_program",

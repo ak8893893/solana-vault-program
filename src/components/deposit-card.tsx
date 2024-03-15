@@ -17,11 +17,11 @@ import { Badge } from "@/components/ui/badge";
 import { LAMPORTS_PER_SOL, PublicKey, SystemProgram } from "@solana/web3.js";
 import Image from "next/image";
 import {
-  SolanaVault,
+  VaultProgram,
   getCounterPDA,
   getVaultPDA,
   programID,
-} from "@/utils/anchor";
+} from "@/utils/vault_program";
 import { useSolanaProvider } from "@/hooks/solanaProvider";
 import { BN, Program } from "@coral-xyz/anchor";
 import idl from "@/utils/idl.json";
@@ -68,7 +68,7 @@ export function DepositCard() {
     // It takes our program's idl and the programId as arguments.
     // Using the idl it generates a set of methods that can be called on the program.
     // The programID is the public key of the program. It is used to interact with the program on-chain.
-    const program = new Program<SolanaVault>(idl as any, programID, provider);
+    const program = new Program<VaultProgram>(idl as any, programID, provider);
 
     setIsLoading(true);
 
@@ -145,7 +145,7 @@ export function DepositCard() {
     } else {
       const counterPDA = getCounterPDA(publicKey);
 
-      const program = new Program<SolanaVault>(idl as any, programID, provider);
+      const program = new Program<VaultProgram>(idl as any, programID, provider);
 
       setBalances();
 
